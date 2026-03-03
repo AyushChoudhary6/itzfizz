@@ -26,7 +26,8 @@ const HeroSection = () => {
     // Matching reference exactly: fixed carWidth = 150
     const carWidth  = 150;
     const roadWidth = window.innerWidth;
-    const endX      = roadWidth - carWidth;
+    // Allow car to scroll further to fully reveal all letters
+    const endX      = roadWidth + 300;
 
     // Precompute each letter's left offset relative to .value-add
     const letters       = lettersRef.current.filter(Boolean);
