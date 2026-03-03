@@ -1,7 +1,7 @@
 /* ─── Hero Section Container ─────────────────────────────────────────── */
 .section {
   position: relative;
-  height: 800vh;
+  height: 1000vh;
   width: 100%;
   background: #D1D1D1;
 }
@@ -36,7 +36,10 @@
   top: 0;
   left: 0;
   z-index: 1;
-  width: 0;
+  width: 100%;
+  transform: scaleX(0);
+  transform-origin: left center;
+  will-change: transform;
 }
 
 /* ─── Car ───────────────────────────────────────────────────────────────── */

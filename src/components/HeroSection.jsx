@@ -5,93 +5,119 @@ import './HeroSection.css';
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Letters in the headline — matching the reference exactly
-const HEADLINE = ['W','E','L','C','O','M','E','\u00A0','I','T','Z','F','I','Z','Z'];
+const HEADLINE = ['W', 'E', 'L', 'C', 'O', 'M', 'E', '\u00A0', 'I', 'T', 'Z', 'F', 'I', 'Z', 'Z'];
 
 const HeroSection = () => {
   const sectionRef = useRef(null);
-  const carRef    = useRef(null);
-  const trailRef  = useRef(null);
-  const lettersRef = useRef([]);    // individual <span> elements
-  const valueAddRef = useRef(null); // the .value-add container
+  const carRef = useRef(null);
+  const trailRef = useRef(null);
+  const lettersRef = useRef([]);
+  const valueAddRef = useRef(null);
 
   useLayoutEffect(() => {
-    const section  = sectionRef.current;
-    const car      = carRef.current;
-    const trail    = trailRef.current;
-    const valueAdd = valueAddRef.current;
+    const ctx = gsap.context(() => {
+      const section = sectionRef.current;
+      const car = carRef.current;
+      const trail = trailRef.current;
+      const valueAdd = valueAddRef.current;
 
-    if (!section || !car || !trail || !valueAdd) return;
+      if (!section || !car || !trail || !valueAdd) return;
 
-    // Use actual car width for proper calculations
-    const carWidth  = car.offsetWidth || 400;
-    const roadWidth = window.innerWidth;
-    // Car scrolls to the right edge
-    const endX      = roadWidth - carWidth;
+      const letters = lettersRef.current.filter(Boolean);
+      let endX = 0;
+      let letterThresholds = [];
+      let trailAttachOffset = 0;
+      const visibleCarAtEnd = 0.22;
+      const setTrailScaleX = gsap.quickSetter(trail, 'scaleX');
 
-    // Precompute each letter's left offset relative to .value-add
-    const letters       = lettersRef.current.filter(Boolean);
-    const valueRect     = valueAdd.getBoundingClientRect();
-    const letterOffsets = letters.map((l) => l.offsetLeft);
+      const recalc = () => {
+        const road = car.parentElement;
+        if (!road) return;
 
-    // ── Car animation (scroll-scrubbed) ─────────────────────────────────────
-    const carTween = gsap.to(car, {
-      x: endX,
-      ease: 'none',
-      scrollTrigger: {
-        trigger: section,
-        start: 'top top',
-        end: 'bottom top',
-        scrub: true,
-        onUpdate() {
-          const carX = (gsap.getProperty(car, 'x') || 0) + carWidth / 2;
+        const roadWidth = road.clientWidth;
+        const carWidth = car.offsetWidth || 0;
+        endX = Math.max(0, roadWidth - carWidth * visibleCarAtEnd);
+        trailAttachOffset = carWidth * 0.2;
 
-          // Trail width = car center position
-          gsap.set(trail, { width: carX });
+        const valueRect = valueAdd.getBoundingClientRect();
+        const letterCenters = letters.map((letter) => {
+          const rect = letter.getBoundingClientRect();
+          return rect.left - valueRect.left + rect.width / 2;
+        });
 
-          // Reveal/hide each letter based on car center vs letter position
-          letters.forEach((letter, i) => {
-            const letterAbsX = valueRect.left + letterOffsets[i];
-            letter.style.opacity = carX >= letterAbsX ? '1' : '0';
-          });
-        },
-      },
-    });
+        letterThresholds = letterCenters.map((center) =>
+          roadWidth > 0 ? gsap.utils.clamp(0, 1, center / roadWidth) : 0
+        );
+      };
 
-    // ── Stat box fade-ins (pixel-based, matching reference) ──────────────────
-    const boxConfigs = [
-      { id: 'box1', start: 'top+=400 top', end: 'top+=600 top' },
-      { id: 'box2', start: 'top+=600 top', end: 'top+=800 top' },
-      { id: 'box3', start: 'top+=800 top', end: 'top+=1000 top' },
-      { id: 'box4', start: 'top+=1000 top', end: 'top+=1200 top' },
-    ];
+      recalc();
+      ScrollTrigger.addEventListener('refreshInit', recalc);
 
-    const statTweens = boxConfigs.map(({ id, start, end }) => {
-      const el = document.getElementById(id);
-      if (!el) return null;
-      return gsap.to(el, {
-        opacity: 1,
+      gsap.set(car, { x: 0 });
+      gsap.set(trail, { scaleX: 0, transformOrigin: 'left center' });
+      letters.forEach((letter) => {
+        letter.style.opacity = '0';
+      });
+
+      gsap.to(car, {
+        x: () => endX,
+        ease: 'none',
         scrollTrigger: {
           trigger: section,
-          start,
-          end,
-          scrub: true,
+          start: 'top top',
+          end: () => `+=${Math.max(1, section.offsetHeight - window.innerHeight)}`,
+          scrub: 0.6,
+          invalidateOnRefresh: true,
+          onUpdate(self) {
+            const road = car.parentElement;
+            if (!road) return;
+
+            const progress = self.progress;
+            const carX = Number(gsap.getProperty(car, 'x')) || 0;
+            const roadWidth = road.clientWidth;
+            const trailWidth = gsap.utils.clamp(0, roadWidth, carX + trailAttachOffset);
+            setTrailScaleX(roadWidth > 0 ? trailWidth / roadWidth : 0);
+
+            letters.forEach((letter, index) => {
+              letter.style.opacity = progress >= (letterThresholds[index] ?? 0) ? '1' : '0';
+            });
+          },
         },
       });
-    });
 
-    return () => {
-      carTween.kill();
-      statTweens.forEach((t) => t && t.kill());
-      ScrollTrigger.getAll().forEach((st) => st.kill());
-    };
+      const boxConfigs = [
+        { id: 'box1', start: 'top+=400 top', end: 'top+=600 top' },
+        { id: 'box2', start: 'top+=600 top', end: 'top+=800 top' },
+        { id: 'box3', start: 'top+=800 top', end: 'top+=1000 top' },
+        { id: 'box4', start: 'top+=1000 top', end: 'top+=1200 top' },
+      ];
+
+      boxConfigs.forEach(({ id, start, end }) => {
+        const el = document.getElementById(id);
+        if (!el) return;
+
+        gsap.to(el, {
+          opacity: 1,
+          scrollTrigger: {
+            trigger: section,
+            start,
+            end,
+            scrub: 0.6,
+          },
+        });
+      });
+
+      return () => {
+        ScrollTrigger.removeEventListener('refreshInit', recalc);
+      };
+    }, sectionRef);
+
+    return () => ctx.revert();
   }, []);
 
   return (
     <div ref={sectionRef} className="section">
       <div className="track">
-
-        {/* ── Road ─────────────────────────────────────────────────── */}
         <div className="road">
           <img
             ref={carRef}
@@ -101,13 +127,14 @@ const HeroSection = () => {
           />
           <div ref={trailRef} className="trail" />
 
-          {/* Headline letters */}
           <div ref={valueAddRef} className="value-add">
             {HEADLINE.map((char, i) => (
               <span
                 key={i}
                 className="value-letter"
-                ref={(el) => { if (el) lettersRef.current[i] = el; }}
+                ref={(el) => {
+                  if (el) lettersRef.current[i] = el;
+                }}
               >
                 {char}
               </span>
@@ -115,7 +142,6 @@ const HeroSection = () => {
           </div>
         </div>
 
-        {/* ── Stat boxes (inside .track, outside .road) ─────────────── */}
         <div className="text-box" id="box1">
           <span className="num-box">58%</span>
           Increase in pick up point use
@@ -132,7 +158,6 @@ const HeroSection = () => {
           <span className="num-box">40%</span>
           Decreased in customer phone calls
         </div>
-
       </div>
     </div>
   );
