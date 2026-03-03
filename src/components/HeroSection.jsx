@@ -94,7 +94,7 @@ const HeroSection = () => {
         <div className="road">
           <img
             ref={carRef}
-            src="/car.png"
+            src={`${import.meta.env.BASE_URL}car.png`}
             alt="McLaren 720S"
             className="car"
           />
