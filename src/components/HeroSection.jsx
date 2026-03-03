@@ -23,11 +23,11 @@ const HeroSection = () => {
 
     if (!section || !car || !trail || !valueAdd) return;
 
-    // Matching reference exactly: fixed carWidth = 150
-    const carWidth  = 150;
+    // Use actual car width for proper calculations
+    const carWidth  = car.offsetWidth || 400;
     const roadWidth = window.innerWidth;
-    // Allow car to scroll further to fully reveal all letters
-    const endX      = roadWidth + 300;
+    // Car scrolls to the right edge
+    const endX      = roadWidth - carWidth;
 
     // Precompute each letter's left offset relative to .value-add
     const letters       = lettersRef.current.filter(Boolean);
